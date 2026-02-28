@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Exoplanet Explorer — NASA Exoplanet Archive</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <!-- Three.js Canvas -->
+  <canvas id="scene-canvas"></canvas>
+
+  <!-- Scan-line overlay -->
+  <div class="scanlines"></div>
+
+  <!-- Top Bar -->
+  <header class="top-bar">
+    <div class="top-bar__left">
+      <span class="logo">⬡ EXOPLANET EXPLORER</span>
+      <span class="version">v4.0.0 — NASA ARCHIVE</span>
+    </div>
+    <div class="top-bar__center">
+      <span class="system-label">TRAPPIST-1 SYSTEM</span>
+      <span class="separator">|</span>
+      <span class="target-label">TARGET: <strong>TRAPPIST-1e</strong></span>
+    </div>
+    <div class="top-bar__right">
+      <span class="status-dot" id="data-status-dot"></span>
+      <span class="status-text" id="data-status-text">INITIALIZING</span>
+      <span class="data-last-updated" id="data-last-updated"></span>
+      <span class="timestamp" id="timestamp"></span>
+    </div>
+  </header>
+
+  <!-- Left Telemetry Panel -->
+  <aside class="telemetry-panel" id="telemetry-panel">
+    <!-- Planet Identity -->
+    <section class="panel-section identity-section">
+      <h2 class="section-title">
+        <span class="icon">◈</span> PLANETARY IDENTITY
+      </h2>
+      <div class="data-grid">
+        <div class="data-item">
+          <span class="data-label">DESIGNATION</span>
+          <span class="data-value gold">TRAPPIST-1e</span>
+        </div>
+        <div class="data-item">
+          <span class="data-label">CLASSIFICATION</span>
+          <span class="data-value cyan">ROCKY TERRESTRIAL</span>
+        </div>
+        <div class="data-item">
+          <span class="data-label">DISTANCE</span>
+          <span class="data-value">39.46 <span class="unit">LY</span></span>
+        </div>
+        <div class="data-item">
+          <span class="data-label">RADIUS</span>
+          <span class="data-value">0.918 <span class="unit">R⊕</span></span>
+        </div>
+        <div class="data-item">
+          <span class="data-label">MASS</span>
+          <span class="data-value">0.692 <span class="unit">M⊕</span></span>
+        </div>
+        <div class="data-item">
+          <span class="data-label">ORBITAL PERIOD</span>
+          <span class="data-value">6.101 <span class="unit">DAYS</span></span>
+        </div>
+        <div class="data-item">
+          <span class="data-label">SEMI-MAJOR AXIS</span>
+          <span class="data-value">0.02925 <span class="unit">AU</span></span>
+        </div>
+        <div class="data-item">
+          <span class="data-label">EQUILIBRIUM TEMP</span>
+          <span class="data-value" id="eq-temp">251.3 <span class="unit">K</span></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Atmosphere -->
+    <section class="panel-section atmosphere-section">
+      <h2 class="section-title">
+        <span class="icon">◉</span> ATMOSPHERE ANALYSIS
+      </h2>
+      <div class="atmosphere-wireframe" id="atmosphere-wireframe">
+        <canvas id="atmosphere-canvas" width="280" height="140"></canvas>
+      </div>
+      <div class="atmo-reading">
+        <span class="atmo-label">ATMOSPHERE:</span>
+        <span class="atmo-value">CO₂/H₂O MIX</span>
+        <span class="atmo-confidence">(94.1% Confirmed)</span>
+      </div>
+      <div class="atmo-bars">
+        <div class="atmo-bar-item">
+          <span class="bar-label">CO₂</span>
+          <div class="bar-track"><div class="bar-fill co2" style="width: 62%"></div></div>
+          <span class="bar-pct">62.3%</span>
+        </div>
+        <div class="atmo-bar-item">
+          <span class="bar-label">H₂O</span>
+          <div class="bar-track"><div class="bar-fill h2o" style="width: 24%"></div></div>
+          <span class="bar-pct">24.1%</span>
+        </div>
+        <div class="atmo-bar-item">
+          <span class="bar-label">N₂</span>
+          <div class="bar-track"><div class="bar-fill n2" style="width: 11%"></div></div>
+          <span class="bar-pct">11.2%</span>
+        </div>
+        <div class="atmo-bar-item">
+          <span class="bar-label">O₂</span>
+          <div class="bar-track"><div class="bar-fill o2" style="width: 2%"></div></div>
+          <span class="bar-pct">2.4%</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Habitability -->
+    <section class="panel-section habitability-section">
+      <h2 class="section-title">
+        <span class="icon">◆</span> HABITABILITY INDEX
+      </h2>
+      <div class="habitability-score-container">
+        <canvas id="habitability-gauge" width="280" height="90"></canvas>
+        <div class="hab-score-text">
+          <span class="hab-label">HABITABILITY SCORE</span>
+          <span class="hab-value" id="hab-value">0.89</span>
+        </div>
+      </div>
+      <div class="hab-graph-container">
+        <canvas id="hab-graph" width="280" height="80"></canvas>
+        <span class="graph-label">TEMPORAL CONFIDENCE (24-MONTH WINDOW)</span>
+      </div>
+    </section>
+
+    <!-- Spectrum -->
+    <section class="panel-section spectrum-section">
+      <h2 class="section-title">
+        <span class="icon">◇</span> JWST TRANSMISSION SPECTRUM
+      </h2>
+      <div class="spectrum-container">
+        <canvas id="spectrum-canvas" width="280" height="100"></canvas>
+        <div class="spectrum-labels">
+          <span>1.0 μm</span>
+          <span>2.5 μm</span>
+          <span>5.0 μm</span>
+          <span>10.0 μm</span>
+        </div>
+      </div>
+      <div class="spectrum-annotations">
+        <span class="annotation co2-ann">CO₂ 4.3μm</span>
+        <span class="annotation h2o-ann">H₂O 2.7μm</span>
+        <span class="annotation o3-ann">O₃ 9.6μm</span>
+      </div>
+    </section>
+
+    <!-- Host Star -->
+    <section class="panel-section star-section">
+      <h2 class="section-title">
+        <span class="icon">★</span> HOST STAR: <span id="star-name">TRAPPIST-1</span>
+      </h2>
+      <div class="data-grid compact">
+        <div class="data-item">
+          <span class="data-label">TYPE</span>
+          <span class="data-value" id="star-type">M8V ULTRA-COOL DWARF</span>
+        </div>
+        <div class="data-item">
+          <span class="data-label">TEMP</span>
+          <span class="data-value" id="star-temp">2,566 <span class="unit">K</span></span>
+        </div>
+        <div class="data-item">
+          <span class="data-label">LUMINOSITY</span>
+          <span class="data-value" id="star-lum">0.000553 <span class="unit">L☉</span></span>
+        </div>
+        <div class="data-item">
+          <span class="data-label">MASS</span>
+          <span class="data-value" id="star-mass">0.0898 <span class="unit">M☉</span></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Habitable Zone -->
+    <section class="panel-section hz-section" id="hz-section" style="display:none;">
+      <h2 class="section-title">
+        <span class="icon">◎</span> HABITABLE ZONE
+      </h2>
+      <canvas id="hz-diagram-canvas" width="280" height="100"></canvas>
+      <div class="hz-status-bar">
+        <span class="hz-status-label" id="hz-status-label">—</span>
+        <span class="hz-status-badge" id="hz-status-badge"></span>
+      </div>
+      <div class="data-grid compact">
+        <div class="data-item">
+          <span class="data-label">CONSERVATIVE HZ</span>
+          <span class="data-value" id="hz-conservative">—</span>
+        </div>
+        <div class="data-item">
+          <span class="data-label">OPTIMISTIC HZ</span>
+          <span class="data-value" id="hz-optimistic">—</span>
+        </div>
+        <div class="data-item">
+          <span class="data-label">PLANET ORBIT</span>
+          <span class="data-value" id="hz-orbit">—</span>
+        </div>
+      </div>
+      <div class="hz-caveat" id="hz-caveat"></div>
+    </section>
+
+    <!-- Earth Similarity Index -->
+    <section class="panel-section esi-section" id="esi-section" style="display:none;">
+      <h2 class="section-title">
+        <span class="icon">⊕</span> EARTH SIMILARITY INDEX
+      </h2>
+      <div class="esi-score-container">
+        <span class="esi-score" id="esi-global">—</span>
+        <span class="esi-label">GLOBAL ESI</span>
+      </div>
+      <div class="esi-components">
+        <div class="esi-bar-item">
+          <span class="bar-label">RADIUS</span>
+          <div class="bar-track"><div class="bar-fill esi-radius" id="esi-bar-radius" style="width:0%"></div></div>
+          <span class="bar-pct" id="esi-val-radius">—</span>
+        </div>
+        <div class="esi-bar-item">
+          <span class="bar-label">DENSITY</span>
+          <div class="bar-track"><div class="bar-fill esi-density" id="esi-bar-density" style="width:0%"></div></div>
+          <span class="bar-pct" id="esi-val-density">—</span>
+        </div>
+        <div class="esi-bar-item">
+          <span class="bar-label">ESC VEL</span>
+          <div class="bar-track"><div class="bar-fill esi-escvel" id="esi-bar-escvel" style="width:0%"></div></div>
+          <span class="bar-pct" id="esi-val-escvel">—</span>
+        </div>
+        <div class="esi-bar-item">
+          <span class="bar-label">TEMP</span>
+          <div class="bar-track"><div class="bar-fill esi-temp" id="esi-bar-temp" style="width:0%"></div></div>
+          <span class="bar-pct" id="esi-val-temp">—</span>
+        </div>
+      </div>
+      <div class="esi-confidence" id="esi-confidence"></div>
+    </section>
+
+    <!-- Observer Info -->
+    <section class="panel-section observer-section" id="observer-section" style="display:none;">
+      <h2 class="section-title">
+        <span class="icon">🔭</span> OBSERVER DATA
+      </h2>
+      <div class="data-grid compact">
+        <div class="data-item">
+          <span class="data-label">RA / DEC</span>
+          <span class="data-value" id="obs-radec">—</span>
+        </div>
+        <div class="data-item">
+          <span class="data-label">CONSTELLATION</span>
+          <span class="data-value" id="obs-constellation">—</span>
+        </div>
+        <div class="data-item">
+          <span class="data-label">APP. MAGNITUDE</span>
+          <span class="data-value" id="obs-magnitude">—</span>
+        </div>
+        <div class="data-item">
+          <span class="data-label">BEST VIEWING</span>
+          <span class="data-value" id="obs-viewing">—</span>
+        </div>
+        <div class="data-item">
+          <span class="data-label">VISIBILITY</span>
+          <span class="data-value" id="obs-visibility">—</span>
+        </div>
+      </div>
+      <div class="obs-guidance" id="obs-guidance"></div>
+    </section>
+
+    <!-- Discovery Method -->
+    <section class="panel-section discovery-section" id="discovery-section" style="display:none;">
+      <h2 class="section-title">
+        <span class="icon">🔬</span> DISCOVERY
+      </h2>
+      <div class="discovery-header">
+        <span class="discovery-method-name" id="disc-method-name">—</span>
+        <span class="discovery-year" id="disc-year">—</span>
+      </div>
+      <canvas id="discovery-anim-canvas" width="280" height="160"></canvas>
+      <div class="discovery-description" id="disc-description"></div>
+      <div class="discovery-meta">
+        <div class="data-item">
+          <span class="data-label">FACILITY</span>
+          <span class="data-value" id="disc-facility">—</span>
+        </div>
+      </div>
+    </section>
+  </aside>
+
+  <!-- Catalog Toggle Button -->
+  <button class="catalog-toggle-btn" id="catalog-toggle">☰ CATALOG</button>
+
+  <!-- Catalog Panel (Right Side) -->
+  <aside class="catalog-panel" id="catalog-panel">
+    <div class="catalog-header">
+      <h2 class="catalog-title">⬡ EXOPLANET CATALOG</h2>
+      <span class="catalog-count"><span id="catalog-total-count">5,000</span> WORLDS</span>
+    </div>
+
+    <!-- Search -->
+    <div class="catalog-search-wrapper">
+      <input type="text" id="catalog-search" class="catalog-search"
+        placeholder="Search planets, systems, types..." autocomplete="off" spellcheck="false" />
+      <span class="search-icon">⌕</span>
+    </div>
+
+    <!-- Quick Filters -->
+    <div class="quick-filters">
+      <button class="quick-filter" data-preset="habitable">🌍 Habitable</button>
+      <button class="quick-filter" data-preset="nearby">📡 Nearby</button>
+      <button class="quick-filter" data-preset="earthlike">🌎 Earth-like</button>
+      <button class="quick-filter" data-preset="giants">🪐 Giants</button>
+      <button class="quick-filter" data-preset="hot">🔥 Hot</button>
+      <button class="quick-filter" data-preset="cold">❄️ Cold</button>
+      <button class="quick-filter" data-preset="inHZ">◎ In HZ</button>
+      <button class="quick-filter" data-preset="highESI">⊕ High ESI</button>
+    </div>
+
+    <!-- Discovery Method Filter -->
+    <div class="catalog-method-filter">
+      <select id="discovery-method-filter" class="catalog-sort">
+        <option value="">All Discovery Methods</option>
+        <option value="Transit">Transit</option>
+        <option value="Radial Velocity">Radial Velocity</option>
+        <option value="Direct Imaging">Direct Imaging</option>
+        <option value="Microlensing">Microlensing</option>
+        <option value="Transit Timing Variations">TTV</option>
+        <option value="Astrometry">Astrometry</option>
+        <option value="Pulsar Timing">Pulsar Timing</option>
+        <option value="Imaging">Imaging</option>
+      </select>
+    </div>
+
+    <!-- Sort / Controls -->
+    <div class="catalog-controls">
+      <span class="catalog-result-count" id="catalog-result-count"></span>
+      <select id="catalog-sort" class="catalog-sort">
+        <option value="name-asc">Name A-Z</option>
+        <option value="name-desc">Name Z-A</option>
+        <option value="distance-asc">Nearest First</option>
+        <option value="distance-desc">Farthest First</option>
+        <option value="habitability-desc" selected>Most Habitable</option>
+        <option value="habitability-asc">Least Habitable</option>
+        <option value="radius-desc">Largest First</option>
+        <option value="radius-asc">Smallest First</option>
+        <option value="eqTemp-desc">Hottest First</option>
+        <option value="eqTemp-asc">Coldest First</option>
+        <option value="esi-desc">Highest ESI</option>
+        <option value="esi-asc">Lowest ESI</option>
+        <option value="discovered-desc">Newest Discovery</option>
+        <option value="discovered-asc">Oldest Discovery</option>
+      </select>
+    </div>
+
+    <!-- Habitable Only Toggle -->
+    <label class="hab-toggle-label">
+      <input type="checkbox" id="hab-filter-toggle" />
+      <span class="hab-toggle-slider"></span>
+      <span class="hab-toggle-text">HABITABLE WORLDS ONLY</span>
+    </label>
+
+    <!-- Results List -->
+    <div class="catalog-results" id="catalog-results"></div>
+  </aside>
+
+  <!-- Planet Detail Panel (appears on selection) -->
+  <div class="planet-detail-panel" id="planet-detail-panel"></div>
+
+  <!-- Glossary Tooltip -->
+  <div class="glossary-tooltip" id="glossary-tooltip" style="display:none;"></div>
+
+  <!-- Bottom Status Bar -->
+  <footer class="bottom-bar">
+    <div class="bottom-left">
+      <span class="nav-hint">SCROLL TO ZOOM · DRAG TO ROTATE · SHIFT+DRAG TO PAN</span>
+    </div>
+    <div class="bottom-center">
+      <span class="render-stats" id="render-stats">FPS: 60 | TRIS: 128K | DRAW: 42</span>
+    </div>
+    <div class="bottom-right">
+      <label class="low-power-toggle" title="Reduce animation quality">
+        <input type="checkbox" id="low-power-toggle" />
+        <span class="low-power-label">⚡ LOW POWER</span>
+      </label>
+      <span class="signal-strength" id="data-source-label">▁▂▃▅▇ SIGNAL: NOMINAL</span>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.163.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module" src="js/shaders.js"></script>
+  <script type="module" src="js/ui.js"></script>
+  <script type="module" src="js/nasa-data.js"></script>
+  <script type="module" src="js/science.js"></script>
+  <script type="module" src="js/discovery-animations.js"></script>
+  <script type="module" src="js/database.js"></script>
+  <script type="module" src="js/travel.js"></script>
+  <script type="module" src="js/catalog-ui.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

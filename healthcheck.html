@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Exoplanet Explorer — Health Check</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0a0a1a; color: #e0e0e0; padding: 40px; }
+    h1 { font-size: 24px; color: #00e5ff; margin-bottom: 24px; }
+    .check { display: flex; align-items: center; gap: 12px; padding: 12px 16px; margin-bottom: 8px; border-radius: 8px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); }
+    .check.pass { border-color: rgba(76, 175, 80, 0.3); }
+    .check.fail { border-color: rgba(244, 67, 54, 0.3); background: rgba(244, 67, 54, 0.05); }
+    .check.running { border-color: rgba(255, 215, 64, 0.3); }
+    .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .dot.pass { background: #4caf50; box-shadow: 0 0 6px #4caf50; }
+    .dot.fail { background: #f44336; box-shadow: 0 0 6px #f44336; }
+    .dot.running { background: #ffd740; box-shadow: 0 0 6px #ffd740; animation: blink 0.8s infinite; }
+    @keyframes blink { 50% { opacity: 0.3; } }
+    .label { font-size: 14px; flex: 1; }
+    .detail { font-size: 11px; color: #888; }
+    .summary { margin-top: 24px; padding: 16px; border-radius: 8px; background: rgba(255,255,255,0.04); }
+    .summary h2 { font-size: 18px; margin-bottom: 8px; }
+    button { padding: 10px 24px; border: 1px solid #00e5ff; background: transparent; color: #00e5ff; border-radius: 6px; cursor: pointer; font-size: 14px; margin-top: 16px; }
+    button:hover { background: rgba(0, 229, 255, 0.1); }
+  </style>
+</head>
+<body>
+  <h1>🌌 Exoplanet Explorer — Health Check</h1>
+  <div id="checks"></div>
+  <div class="summary" id="summary" style="display:none;">
+    <h2 id="summary-title"></h2>
+    <p id="summary-text"></p>
+  </div>
+  <button onclick="runAll()">Run All Checks</button>
+
+  <script>
+    const checks = [
+      {
+        name: 'Server responding',
+        run: async () => {
+          const r = await fetch('/health');
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          const j = await r.json();
+          return `Uptime: ${j.uptime.toFixed(1)}s`;
+        }
+      },
+      {
+        name: 'index.html loads',
+        run: async () => {
+          const r = await fetch('/index.html');
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          const text = await r.text();
+          if (!text.includes('scene-canvas')) throw new Error('Missing canvas element');
+          return `${text.length} bytes`;
+        }
+      },
+      {
+        name: 'JS modules load (app.js)',
+        run: async () => {
+          const r = await fetch('/js/app.js');
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          const text = await r.text();
+          if (!text.includes('import')) throw new Error('Not an ES module');
+          return `${text.length} bytes`;
+        }
+      },
+      {
+        name: 'JS modules load (database.js)',
+        run: async () => {
+          const r = await fetch('/js/database.js');
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return 'OK';
+        }
+      },
+      {
+        name: 'JS modules load (nasa-data.js)',
+        run: async () => {
+          const r = await fetch('/js/nasa-data.js');
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return 'OK';
+        }
+      },
+      {
+        name: 'JS modules load (science.js)',
+        run: async () => {
+          const r = await fetch('/js/science.js');
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return 'OK';
+        }
+      },
+      {
+        name: 'CSS loads',
+        run: async () => {
+          const r = await fetch('/css/style.css');
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return `${(await r.text()).length} bytes`;
+        }
+      },
+      {
+        name: 'Three.js CDN reachable',
+        run: async () => {
+          const r = await fetch('https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js', { method: 'HEAD', mode: 'no-cors' });
+          return 'CDN reachable';
+        }
+      },
+      {
+        name: 'NASA Exoplanet Archive API reachable',
+        run: async () => {
+          const url = 'https://exoplanetarchive.ipac.caltech.edu/TAP/sync?query=SELECT+TOP+1+pl_name+FROM+pscomppars&format=json';
+          const r = await fetch(url);
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          const data = await r.json();
+          return `API OK, sample: ${data[0]?.pl_name || 'unknown'}`;
+        }
+      },
+      {
+        name: 'Google Fonts reachable',
+        run: async () => {
+          const r = await fetch('https://fonts.googleapis.com/css2?family=Orbitron:wght@400', { mode: 'no-cors' });
+          return 'Fonts CDN reachable';
+        }
+      }
+    ];
+
+    function renderCheck(idx, state, detail) {
+      const container = document.getElementById('checks');
+      let el = container.children[idx];
+      if (!el) {
+        el = document.createElement('div');
+        el.className = 'check';
+        container.appendChild(el);
+      }
+      el.className = `check ${state}`;
+      el.innerHTML = `
+        <div class="dot ${state}"></div>
+        <span class="label">${checks[idx].name}</span>
+        <span class="detail">${detail || ''}</span>
+      `;
+    }
+
+    async function runAll() {
+      const container = document.getElementById('checks');
+      container.innerHTML = '';
+      let passed = 0, failed = 0;
+
+      for (let i = 0; i < checks.length; i++) {
+        renderCheck(i, 'running', 'Running...');
+      }
+
+      for (let i = 0; i < checks.length; i++) {
+        try {
+          const detail = await checks[i].run();
+          renderCheck(i, 'pass', detail);
+          passed++;
+        } catch (err) {
+          renderCheck(i, 'fail', err.message);
+          failed++;
+        }
+      }
+
+      const sum = document.getElementById('summary');
+      const title = document.getElementById('summary-title');
+      const text = document.getElementById('summary-text');
+      sum.style.display = '';
+      if (failed === 0) {
+        title.textContent = '✅ All checks passed';
+        title.style.color = '#4caf50';
+        text.textContent = `${passed}/${checks.length} checks passed. The application is ready to use.`;
+      } else {
+        title.textContent = `⚠️ ${failed} check(s) failed`;
+        title.style.color = '#ff9100';
+        text.textContent = `${passed} passed, ${failed} failed. See details above. External API/CDN failures may not affect offline functionality.`;
+      }
+    }
+
+    // Auto-run on load
+    runAll();
+  </script>
+</body>
+</html>
