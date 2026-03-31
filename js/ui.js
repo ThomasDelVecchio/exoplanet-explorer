@@ -332,6 +332,75 @@ export function drawSpectrum(ctx, width, height, time) {
 }
 
 /**
+ * Draw orbit-style comparison visual (target orbit vs Earth and HZ ring)
+ */
+export function drawOrbitComparison(ctx, width, height, planet, time = 0) {
+  ctx.clearRect(0, 0, width, height);
+
+  const centerX = width * 0.5;
+  const centerY = height * 0.52;
+  const maxOrbitPx = Math.min(width, height) * 0.38;
+
+  const orbitAU = Number.isFinite(planet?.semiMajorAxis) ? planet.semiMajorAxis : 1;
+  const normalized = Math.max(0.06, Math.min(2, orbitAU));
+  const targetOrbitPx = Math.max(12, maxOrbitPx * (normalized / 2));
+  const earthOrbitPx = maxOrbitPx * 0.5;
+
+  const hz = planet?.hzStatus?.hz;
+  const hzInner = hz?.conservativeInner ?? hz?.optimisticInner ?? 0.75;
+  const hzOuter = hz?.conservativeOuter ?? hz?.optimisticOuter ?? 1.5;
+  const hzInnerPx = Math.max(10, maxOrbitPx * Math.min(1.6, hzInner) / 2);
+  const hzOuterPx = Math.max(hzInnerPx + 2, maxOrbitPx * Math.min(2, hzOuter) / 2);
+
+  ctx.fillStyle = 'rgba(255, 224, 140, 0.12)';
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, hzOuterPx, 0, Math.PI * 2);
+  ctx.arc(centerX, centerY, hzInnerPx, 0, Math.PI * 2, true);
+  ctx.fill();
+
+  ctx.strokeStyle = 'rgba(181, 198, 255, 0.7)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 5]);
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, earthOrbitPx, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(124, 233, 255, 0.85)';
+  ctx.setLineDash([2, 4]);
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, targetOrbitPx, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  const angle = (time * 0.35) % (Math.PI * 2);
+  const x = centerX + Math.cos(angle) * targetOrbitPx;
+  const y = centerY + Math.sin(angle) * targetOrbitPx;
+
+  const core = ctx.createRadialGradient(x, y, 0, x, y, 8);
+  core.addColorStop(0, 'rgba(124, 233, 255, 0.95)');
+  core.addColorStop(1, 'rgba(124, 233, 255, 0)');
+  ctx.beginPath();
+  ctx.arc(x, y, 8, 0, Math.PI * 2);
+  ctx.fillStyle = core;
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(x, y, 2, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(211, 245, 255, 1)';
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, 3, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255, 214, 136, 0.95)';
+  ctx.fill();
+
+  ctx.fillStyle = 'rgba(208, 224, 255, 0.85)';
+  ctx.font = '10px "Share Tech Mono", monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText(`a = ${orbitAU.toFixed(4)} AU`, 8, height - 10);
+}
+
+/**
  * Update the timestamp clock
  */
 export function updateTimestamp() {

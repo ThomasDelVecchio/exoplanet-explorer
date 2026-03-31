@@ -26,6 +26,7 @@ import {
   drawAtmosphereWireframe,
   drawHabitabilityGauge,
   drawHabitabilityGraph,
+  drawOrbitComparison,
   drawSpectrum,
   updateTimestamp,
 } from './ui.js';
@@ -66,6 +67,7 @@ fallbackSurfaceTexture.colorSpace = THREE.SRGBColorSpace;
 // Current planet data
 let currentPlanet = null;
 let currentProfile = null;
+let quickActionFeedbackTimer = null;
 
 // Planet parameters (dynamic)
 const PLANET_RADIUS = 1.5;
@@ -187,6 +189,7 @@ function init() {
   });
 
   // Start
+  initQuickActions();
   animate();
   startUIUpdates();
 }
@@ -344,13 +347,25 @@ function updateTelemetryPanel() {
   if (eqTempEl) eqTempEl.innerHTML = `${p.eqTemp} <span class="unit">K</span>`;
 
   const habValue = document.getElementById('hab-value');
-  if (habValue) habValue.textContent = p.habitability.toFixed(2);
+  if (habValue) {
+    habValue.textContent = p.habitability.toFixed(2);
+    habValue.classList.remove('hab-good', 'hab-mid', 'hab-risk');
+    if (p.habitability >= 0.65) habValue.classList.add('hab-good');
+    else if (p.habitability >= 0.35) habValue.classList.add('hab-mid');
+    else habValue.classList.add('hab-risk');
+  }
+
+  const orbitChipPlanet = document.getElementById('orbit-chip-planet');
+  if (orbitChipPlanet) {
+    orbitChipPlanet.textContent = `${p.name.toUpperCase()} ORBIT`;
+  }
 
   if (p.atmosphere && p.atmosphere.length > 0) {
     updateAtmosphereBars(p.atmosphere);
   }
   setStarData(p);
   updateSciencePanels(p);
+  updateQuickActionState();
 }
 
 function setDataValue(label, html, colorClass) {
@@ -538,6 +553,61 @@ function onPlanetSelected(planetData) {
     animateCameraReset();
   });
   hideCatalog();
+}
+
+function initQuickActions() {
+  const compareBtn = document.getElementById('quick-compare');
+  const saveBtn = document.getElementById('quick-save');
+  const discoverBtn = document.getElementById('quick-discover');
+
+  compareBtn?.addEventListener('click', () => {
+    toggleCatalog();
+    showQuickActionFeedback('COMPARISON READY');
+  });
+
+  discoverBtn?.addEventListener('click', () => {
+    toggleCatalog();
+    showQuickActionFeedback('DISCOVERY FEED OPEN');
+  });
+
+  saveBtn?.addEventListener('click', () => {
+    if (!currentPlanet) return;
+    const key = 'exo_saved_targets';
+    const existing = JSON.parse(localStorage.getItem(key) || '[]');
+    if (!existing.includes(currentPlanet.name)) {
+      existing.push(currentPlanet.name);
+      localStorage.setItem(key, JSON.stringify(existing));
+      showQuickActionFeedback(`SAVED ${currentPlanet.name.toUpperCase()}`);
+    } else {
+      showQuickActionFeedback('ALREADY SAVED');
+    }
+    updateQuickActionState();
+  });
+
+  updateQuickActionState();
+}
+
+function updateQuickActionState() {
+  const saveBtn = document.getElementById('quick-save');
+  if (!saveBtn || !currentPlanet) return;
+  const key = 'exo_saved_targets';
+  const existing = JSON.parse(localStorage.getItem(key) || '[]');
+  const isSaved = existing.includes(currentPlanet.name);
+  saveBtn.textContent = isSaved ? '✓ SAVED' : '★ SAVE';
+  saveBtn.setAttribute('aria-pressed', isSaved ? 'true' : 'false');
+}
+
+function showQuickActionFeedback(message) {
+  const feedback = document.getElementById('quick-action-feedback');
+  if (!feedback) return;
+  feedback.textContent = message;
+  feedback.classList.add('visible');
+  if (quickActionFeedbackTimer) {
+    clearTimeout(quickActionFeedbackTimer);
+  }
+  quickActionFeedbackTimer = setTimeout(() => {
+    feedback.classList.remove('visible');
+  }, 1400);
 }
 
 // ── Camera Reset Animation ───────────────────
@@ -904,6 +974,10 @@ function startUIUpdates() {
   const specCanvas = document.getElementById('spectrum-canvas');
   const specCtx = specCanvas ? specCanvas.getContext('2d') : null;
 
+  // Orbit comparison
+  const orbitCanvas = document.getElementById('orbit-compare-canvas');
+  const orbitCtx = orbitCanvas ? orbitCanvas.getContext('2d') : null;
+
   function updateUI() {
     const t = performance.now() / 1000;
 
@@ -912,6 +986,7 @@ function startUIUpdates() {
     if (habCtx) drawHabitabilityGauge(habCtx, habGauge.width, habGauge.height, habScore, t);
     if (habGraphCtx) drawHabitabilityGraph(habGraphCtx, habGraph.width, habGraph.height, t);
     if (specCtx) drawSpectrum(specCtx, specCanvas.width, specCanvas.height, t);
+    if (orbitCtx) drawOrbitComparison(orbitCtx, orbitCanvas.width, orbitCanvas.height, currentPlanet, t);
 
     updateTimestamp();
 

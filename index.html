@@ -131,6 +131,18 @@
       </div>
     </section>
 
+    <section class="panel-section orbit-compare-section" id="orbit-compare-section">
+      <h2 class="section-title">
+        <span class="icon">◎</span> ORBIT COMPARISON
+      </h2>
+      <canvas id="orbit-compare-canvas" width="280" height="130"></canvas>
+      <div class="orbit-legend">
+        <span class="orbit-chip orbit-chip--planet" id="orbit-chip-planet">TARGET ORBIT</span>
+        <span class="orbit-chip orbit-chip--earth">EARTH ORBIT</span>
+        <span class="orbit-chip orbit-chip--hz">HZ BAND</span>
+      </div>
+    </section>
+
     <!-- Spectrum -->
     <section class="panel-section spectrum-section">
       <h2 class="section-title">
@@ -369,6 +381,14 @@
 
   <!-- Glossary Tooltip -->
   <div class="glossary-tooltip" id="glossary-tooltip" style="display:none;"></div>
+
+  <!-- Mission Quick Actions -->
+  <nav class="quick-actions-dock" aria-label="Quick mission actions">
+    <button class="quick-action-btn" id="quick-compare" type="button" title="Open catalog for comparison">⇄ COMPARE</button>
+    <button class="quick-action-btn" id="quick-save" type="button" title="Save current target">★ SAVE</button>
+    <button class="quick-action-btn quick-action-btn--primary" id="quick-discover" type="button" title="Browse and discover exoplanets">◉ DISCOVER</button>
+    <span class="quick-action-feedback" id="quick-action-feedback" aria-live="polite"></span>
+  </nav>
 
   <!-- Bottom Status Bar -->
   <footer class="bottom-bar">

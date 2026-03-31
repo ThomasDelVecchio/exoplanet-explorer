@@ -33,12 +33,14 @@ let currentFilters = {};
 let catalogVisible = false;
 let selectedPlanetId = null;
 let discoveryAnimCleanup = null;
+let searchToken = 0;
 
 // ── Initialize Catalog ───────────────────────
 export function initCatalog(onSelect) {
   onSelectPlanet = onSelect;
   bindEvents();
   updateStats();
+  renderSkeletonCards(8);
   performSearch();
 }
 
@@ -259,6 +261,7 @@ function applyQuickFilter(preset) {
 
 // ── Perform Search ───────────────────────────
 function performSearch() {
+  const token = ++searchToken;
   const searchInput = document.getElementById('catalog-search');
   const query = searchInput ? searchInput.value : '';
 
@@ -269,15 +272,29 @@ function performSearch() {
     currentFilters.sortDir = sortDir;
   }
 
-  currentResults = searchPlanets(query, currentFilters);
-  renderResults(false);
-  updateResultCount();
+  renderSkeletonCards(8);
+  window.setTimeout(() => {
+    if (token !== searchToken) return;
+    currentResults = searchPlanets(query, currentFilters);
+    renderResults(false);
+    updateResultCount();
+  }, 120);
+}
+
+function renderSkeletonCards(count = 8) {
+  const container = document.getElementById('catalog-results');
+  if (!container) return;
+  container.classList.add('loading');
+  container.innerHTML = new Array(count)
+    .fill('<div class="skeleton-card" aria-hidden="true"></div>')
+    .join('');
 }
 
 // ── Render Results ───────────────────────────
 function renderResults(append = false) {
   const container = document.getElementById('catalog-results');
   if (!container) return;
+  container.classList.remove('loading');
 
   const start = append ? currentPage * PAGE_SIZE : 0;
   const end = (currentPage + 1) * PAGE_SIZE;
@@ -313,11 +330,18 @@ function createPlanetCard(planet) {
   const card = document.createElement('div');
   card.className = `planet-card ${planet.id === selectedPlanetId ? 'selected' : ''}`;
   card.dataset.planetId = planet.id;
+  card.tabIndex = 0;
+  card.setAttribute('role', 'button');
+  card.setAttribute('aria-label', `View planet ${planet.name}`);
 
   const typeColor = getTypeColor(planet.type);
   const habColor = getHabColor(planet.habitability);
   const safeHab = Number.isFinite(planet.habitability) ? planet.habitability : 0;
   const habPct = Math.round(safeHab * 100);
+  const orbitScale = Math.max(0.25, Math.min(1, (Number.isFinite(planet.semiMajorAxis) ? planet.semiMajorAxis : 1) / 1.6));
+  const highlightMetric = Number.isFinite(planet.esi?.global)
+    ? `ESI <strong>${planet.esi.global.toFixed(2)}</strong>`
+    : `DISC <strong>${planet.discovered || '—'}</strong>`;
 
   // HZ / ESI badges
   const hzBadge = planet.hzStatus && planet.hzStatus.conservative
@@ -345,11 +369,13 @@ function createPlanetCard(planet) {
       <div class="planet-card__name">${planet.name} ${hzBadge}${esiBadge}</div>
       <div class="planet-card__type" style="color: ${typeColor}">${planet.type} ${methodTag}</div>
       <div class="planet-card__stats">
-        <span title="Distance">${formatDistance(planet.distance)}</span>
-        <span title="Radius">${formatNumeric(planet.radius, 2)} R⊕</span>
-        <span title="Temperature">${Number.isFinite(planet.eqTemp) ? planet.eqTemp : '—'} K</span>
+        <span class="planet-card__stat-chip" title="Distance">${formatDistance(planet.distance)}</span>
+        <span class="planet-card__stat-chip" title="Radius">${formatNumeric(planet.radius, 2)} R⊕</span>
+        <span class="planet-card__stat-chip" title="Temperature">${Number.isFinite(planet.eqTemp) ? planet.eqTemp : '—'} K</span>
       </div>
+      <div class="planet-card__metric">${highlightMetric}</div>
     </div>
+    <div class="planet-card__orbit" aria-hidden="true" style="transform: scale(${orbitScale});"></div>
     <div class="planet-card__hab">
       <svg class="hab-ring" viewBox="0 0 36 36">
         <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="2.5"/>
@@ -369,6 +395,24 @@ function createPlanetCard(planet) {
     } else {
       showPlanetDetail(planet);
     }
+  });
+
+  card.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      showPlanetDetail(planet);
+    }
+  });
+
+  card.addEventListener('mousemove', (e) => {
+    const rect = card.getBoundingClientRect();
+    const relX = (e.clientX - rect.left) / rect.width - 0.5;
+    const relY = (e.clientY - rect.top) / rect.height - 0.5;
+    card.style.transform = `translate3d(${relX * -2}px, ${relY * -3}px, 0) scale(1.01)`;
+  });
+
+  card.addEventListener('mouseleave', () => {
+    card.style.transform = '';
   });
 
   return card;
